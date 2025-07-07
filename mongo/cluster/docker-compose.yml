@@ -1,0 +1,60 @@
+services:
+  # Config Servers (replica set: csrs)
+  mongo-cluster-config1:
+    image: mongo:7
+    command: mongod --configsvr --replSet csrs --port ${CONFIGSVR_PORT:-27019}
+    container_name: mongo-cluster-config1
+    networks:
+      - mongo-cluster
+
+  mongo-cluster-config2:
+    image: mongo:7
+    command: mongod --configsvr --replSet csrs --port ${CONFIGSVR_PORT:-27019}
+    container_name: mongo-cluster-config2
+    networks:
+      - mongo-cluster
+
+  mongo-cluster-config3:
+    image: mongo:7
+    command: mongod --configsvr --replSet csrs --port ${CONFIGSVR_PORT:-27019}
+    container_name: mongo-cluster-config3
+    networks:
+      - mongo-cluster
+
+  # Shard 1
+  mongo-cluster-shard1:
+    image: mongo:7
+    command: mongod --shardsvr --replSet shard1 --port ${SHARDSVR_PORT:-27018}
+    container_name: mongo-cluster-shard1
+    networks:
+      - mongo-cluster
+
+  # Shard 2
+  mongo-cluster-shard2:
+    image: mongo:7
+    command: mongod --shardsvr --replSet shard2 --port ${SHARDSVR_PORT:-27018}
+    container_name: mongo-cluster-shard2
+    networks:
+      - mongo-cluster
+
+  # mongos
+  mongo-cluster-mongos:
+    image: mongo:7
+    depends_on:
+      - mongo-cluster-config1
+      - mongo-cluster-config2
+      - mongo-cluster-config3
+      - mongo-cluster-shard1
+      - mongo-cluster-shard2
+    command: >
+      mongos --configdb csrs/mongo-cluster-config1:${CONFIGSVR_PORT:-27019},mongo-cluster-config2:${CONFIGSVR_PORT:-27019},mongo-cluster-config3:${CONFIGSVR_PORT:-27019} --port ${MONGOS_PORT:-27017}
+    container_name: mongo-cluster-mongos
+    ports:
+      - "${MONGOS_PORT:-27017}:${MONGOS_PORT:-27017}"
+    networks:
+      - mongo-cluster
+
+networks:
+  mongo-cluster:
+    driver: bridge
+
